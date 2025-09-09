@@ -50,7 +50,6 @@
 
       <span style="margin-left:12px"></span>
       <button id="slowBtn" class="btn choice"  title="0.85×">Slow</button>
-      <button id="offBtn"  class="btn choice active" title="1.00×">Off</button>
       <button id="fastBtn" class="btn choice"  title="1.25×">Fast</button>
 
       <span style="margin-left:12px"></span>
@@ -81,7 +80,6 @@
   const back5    = document.getElementById('back5');
   const fwd5     = document.getElementById('fwd5');
   const slowBtn  = document.getElementById('slowBtn');
-  const offBtn   = document.getElementById('offBtn');
   const fastBtn  = document.getElementById('fastBtn');
   const volume   = document.getElementById('volume');
   const fxButtons = document.querySelectorAll('[data-fx]');
@@ -94,7 +92,7 @@
       Make sure it’s in the same folder and the name matches <b>exactly</b> (case-sensitive).`);
   });
 
-  // Volume: apply to video and FX layer (when created)
+  // Volume: original + FX layer (when created)
   let master = null;
   function setVolume(v){
     const vv = Math.max(0, Math.min(1, v));
@@ -104,28 +102,26 @@
   volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value) || 0));
   setVolume(parseFloat(volume.value) || 1);
 
-  // Speed + button highlighting
+  // Speed + highlighting (only Slow/Fast; normal = no highlight)
   function highlightSpeed(rate){
-    [slowBtn, offBtn, fastBtn].forEach(b => b.classList.remove('active'));
+    [slowBtn, fastBtn].forEach(b => b.classList.remove('active'));
     if (rate < 1.0) slowBtn.classList.add('active');
     else if (rate > 1.0) fastBtn.classList.add('active');
-    else offBtn.classList.add('active');
+    // rate === 1.0 -> neither highlighted
   }
   function setSpeed(rate){
     const r = Math.max(0.25, Math.min(2.0, rate));
     vid.playbackRate = r;
     highlightSpeed(r);
   }
-
   slowBtn.addEventListener('click', () => setSpeed(0.85));
-  offBtn .addEventListener('click', () => setSpeed(1.00));
   fastBtn.addEventListener('click', () => setSpeed(1.25));
-  setSpeed(1.00);
+  setSpeed(1.00); // start normal
 
   // Transport
   playBtn.addEventListener('click', async () => {
     hideStatus();
-    setVolume(parseFloat(volume.value) || 1); // ensure audible at play
+    setVolume(parseFloat(volume.value) || 1); // ensure audible
     try { await vid.play(); } catch {}
     ensureAudioGraph(); // prep FX after first play
   });
@@ -257,47 +253,53 @@
     if (!ctx) return;
     resetFX();
 
-    // Only ADD processed sound on top of original
     switch(name){
       case 'none':
         // Return to NORMAL speed and no FX
         setSpeed(1.00);
         break;
+
       case 'telephone':
         directWet.gain.value = 0.9;
         hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8;
         break;
+
       case 'robot':
         directWet.gain.value = 0.9;
         hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2;
         shaper.curve = makeDistortion(75);
         echoMix.gain.value = 0.08;
         break;
+
       case 'cave':
         directWet.gain.value = 0.2;
         reverbMix.gain.value = 0.45;
         echoMix.gain.value   = 0.10;
         delay.delayTime.value= 0.12;
         break;
+
       case 'echo':
         directWet.gain.value = 0.2;
         echoMix.gain.value   = 0.30;
         delay.delayTime.value= 0.22; fb.gain.value=0.32;
         break;
+
       case 'alien':
         directWet.gain.value = 0.9;
         bp.frequency.value = 900; bp.Q.value = 0.9;
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
-      case 'chipmunk':
+
+      case 'chipmunk': // playful: pitch up via faster speed
         directWet.gain.value = 0.9;
         hp.frequency.value = 120; lp.frequency.value = 18000;
-        setSpeed(1.25); // pitch up via speed
+        setSpeed(1.25);
         break;
-      case 'deep':
+
+      case 'deep': // playful: pitch down via slower speed
         directWet.gain.value = 0.9;
         lp.frequency.value = 4800;
-        setSpeed(0.85); // pitch down via speed
+        setSpeed(0.85);
         break;
     }
 
