@@ -1,96 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Cute Video Lab — Speed & Voice FX (GitHub Pages fix)</title>
+<title>Cute Video Lab — Colors.mp4</title>
 <style>
   :root { --card-max-w: 92vw; --card-max-h: 92svh; }
   body {
-    margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background: #e6f2ff;
-    min-height: 100svh;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
-    padding-bottom: env(safe-area-inset-bottom);
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: #e6f2ff; min-height: 100svh; display: grid; place-items: center;
+    overflow: hidden; padding-bottom: env(safe-area-inset-bottom);
   }
   .wrap {
-    width: min(1000px, var(--card-max-w));
-    max-height: var(--card-max-h);
-    background: rgba(255,255,255,.95);
-    border-radius: 16px;
-    box-shadow: 0 6px 24px rgba(0,0,0,.15);
-    padding: 12px 14px 16px;
-    box-sizing: border-box;
-    display: grid;
-    gap: 12px;
-    grid-template-rows: auto auto 1fr auto auto;
+    width: min(1000px, var(--card-max-w)); max-height: var(--card-max-h);
+    background: rgba(255,255,255,.95); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.15);
+    padding: 12px 14px 16px; box-sizing: border-box; display: grid; gap: 12px;
+    grid-template-rows: auto 1fr auto auto; /* status, video, controls, fx */
   }
-  .topbar, .controls, .fxbar, .statusbar {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
-  }
-  video {
-    width: 100%;
-    border-radius: 12px;
-    background: #000;
-    box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
-  }
+  .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
   .btn {
     appearance: none; border: 0; padding: 10px 12px; border-radius: 12px;
     background: #0b61ff; color: #fff; font-weight: 700; cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,.15);
   }
-  .btn:active { transform: translateY(1px); }
   .btn.ghost { background: #edf3ff; color: #0b61ff; }
-  .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .chip { padding: 8px 10px; border-radius: 999px; background: #eef5ff; color: #05367e; font-weight: 700; }
   .small { font-size: .9rem; color: #05367e; font-weight: 600; }
   input[type="range"] { width: 240px; }
-  .chip { padding: 8px 10px; border-radius: 999px; background: #eef5ff; color: #05367e; font-weight: 700; }
-  .fxbar .btn { background: #ff6ec7; }
-  .fxbar .btn.ghost { background: #ffe3f4; color: #b9046a; }
+  video {
+    width: 100%; border-radius: 12px; background: #000;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
+  }
   .alert {
     display:none; background:#ffe8ea; color:#92001c; border:1px solid #ffb7c1;
-    padding:8px 12px; border-radius:10px; font-weight:700;
+    padding:8px 12px; border-radius:10px; font-weight:700; text-align:center;
   }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="topbar row">
-      <button id="openBtn" class="btn ghost" title="Open MP4">📁 Open MP4</button>
-      <span class="chip">Speed & Voice FX for <b>Colors.mp4</b> (or any file)</span>
-      <input id="fileInput" type="file" accept="video/mp4,video/webm,video/ogg" hidden />
+    <!-- Status (shows if Colors.mp4 is missing or fails to load) -->
+    <div class="row"><div id="status" class="alert"></div></div>
+
+    <!-- Native controls left on for quick sanity checks -->
+    <video id="vid" src="Colors.mp4" controls playsinline></video>
+
+    <!-- Transport + speed + volume -->
+    <div class="row">
+      <button id="back5" class="btn" title="Back 5s">⟵ 5s</button>
+      <button id="play"  class="btn" title="Play/Pause (Space)">▶ Play</button>
+      <button id="pause" class="btn" title="Pause">⏸ Pause</button>
+      <button id="fwd5"  class="btn" title="Forward 5s">5s ⟶</button>
+    </div>
+    <div class="row">
+      <span class="small">Speed</span>
+      <button id="speedDown" class="btn ghost" title="–0.25×">–</button>
+      <input id="speed" type="range" min="0.25" max="2.0" step="0.05" value="1.00"/>
+      <button id="speedUp" class="btn ghost" title="+0.25×">+</button>
+      <span id="speedLabel" class="chip">1.00×</span>
+      <span class="small" style="margin-left:12px">Volume</span>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="1"/>
     </div>
 
-    <div class="statusbar">
-      <div id="status" class="alert">Couldn’t find <b>Colors.mp4</b>. Put it next to this page or click “Open MP4”.</div>
-    </div>
-
-    <video id="vid" src="Colors.mp4" playsinline></video>
-
-    <div class="controls">
-      <div class="row">
-        <button id="back5" class="btn" title="Back 5s">⟵ 5s</button>
-        <button id="play"  class="btn" title="Play/Pause (Space)">▶ Play</button>
-        <button id="pause" class="btn" title="Pause">⏸ Pause</button>
-        <button id="fwd5"  class="btn" title="Forward 5s">5s ⟶</button>
-      </div>
-      <div class="row">
-        <span class="small">Speed</span>
-        <button id="speedDown" class="btn ghost" title="–0.25×">–</button>
-        <input id="speed" type="range" min="0.25" max="2.0" step="0.05" value="1.00"/>
-        <button id="speedUp" class="btn ghost" title="+0.25×">+</button>
-        <span id="speedLabel" class="chip">1.00×</span>
-      </div>
-      <div class="row">
-        <span class="small">Volume</span>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="1"/>
-      </div>
-    </div>
-
-    <div class="fxbar">
+    <!-- Fun FX -->
+    <div class="row">
       <button data-fx="none"      class="btn ghost">None</button>
       <button data-fx="chipmunk"  class="btn">Chipmunk</button>
       <button data-fx="deep"      class="btn">Deep</button>
@@ -104,8 +77,19 @@
 
 <script>
 (async function(){
-  const DEFAULT_SRC = 'Colors.mp4'; // ⚠️ exact case for GitHub Pages
+  const DEFAULT_SRC = 'Colors.mp4'; // exact case for GitHub Pages
   const vid = document.getElementById('vid');
+  const statusEl = document.getElementById('status');
+
+  // Show a friendly error if Colors.mp4 fails to load
+  function showStatus(msg){ statusEl.innerHTML = msg; statusEl.style.display = 'block'; }
+  function hideStatus(){ statusEl.style.display = 'none'; }
+  vid.addEventListener('error', () => {
+    showStatus(`Couldn’t load <b>${DEFAULT_SRC}</b>.<br>
+      Make sure it’s in the same folder and the name matches <b>exactly</b> (case-sensitive).`);
+  });
+
+  // --- Basic controls ---
   const playBtn = document.getElementById('play');
   const pauseBtn = document.getElementById('pause');
   const back5 = document.getElementById('back5');
@@ -115,92 +99,7 @@
   const speedDown = document.getElementById('speedDown');
   const speedUp   = document.getElementById('speedUp');
   const volume = document.getElementById('volume');
-  const openBtn = document.getElementById('openBtn');
-  const fileInput = document.getElementById('fileInput');
-  const statusEl = document.getElementById('status');
 
-  // Show a friendly error if the default file 404s (case mismatch / wrong folder)
-  function showStatus(msg){
-    statusEl.innerHTML = msg;
-    statusEl.style.display = 'block';
-  }
-  function hideStatus(){ statusEl.style.display = 'none'; }
-
-  // Detect load errors on default src
-  vid.addEventListener('error', () => {
-    // If you see this, either the file isn't there or the case/path doesn't match.
-    showStatus(`Couldn’t find <b>${DEFAULT_SRC}</b>. Put it next to this page or click “Open MP4”.`);
-  });
-
-  // --- Audio Graph (Web Audio) ---
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  const ctx = new AudioCtx();
-  await ctx.resume().catch(()=>{});
-
-  // Route video audio into WebAudio
-  const src = ctx.createMediaElementSource(vid);
-  // Dry/wet paths
-  const dry = ctx.createGain();       dry.gain.value = 1.0;
-  const trem = ctx.createGain();      trem.gain.value = 1.0;
-  const lfo  = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0;
-  const lfoGain = ctx.createGain();   lfoGain.gain.value = 0;
-  lfo.connect(lfoGain).connect(trem.gain); lfo.start();
-
-  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 20; hp.Q.value = 0.7;
-  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000; bp.Q.value = 0.1;
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 20000; lp.Q.value = 0.7;
-
-  const shaper = ctx.createWaveShaper();
-  function makeDistortion(amount=0){
-    const k = amount, n = 44100, curve = new Float32Array(n);
-    const deg = Math.PI/180;
-    for (let i=0;i<n;i++){
-      const x = i * 2 / n - 1;
-      curve[i] = (3+k)*x*20*deg / (Math.PI + k*Math.abs(x));
-    }
-    return curve;
-  }
-  shaper.curve = makeDistortion(0); shaper.oversample = '4x';
-
-  const delay = ctx.createDelay(2.0); delay.delayTime.value = 0.18;
-  const fb    = ctx.createGain();     fb.gain.value = 0.25;
-  const echoMix = ctx.createGain();   echoMix.gain.value = 0.0;
-  delay.connect(fb).connect(delay);
-
-  const convolver = ctx.createConvolver();
-  const reverbMix = ctx.createGain(); reverbMix.gain.value = 0.0;
-  function makeImpulse(seconds=2.2, decay=2.5){
-    const rate = ctx.sampleRate, len = rate * seconds;
-    const ir = ctx.createBuffer(2, len, rate);
-    for (let c=0;c<2;c++){
-      const ch = ir.getChannelData(c);
-      for (let i=0;i<len;i++){ ch[i] = (Math.random()*2-1) * Math.pow(1 - i/len, decay); }
-    }
-    return ir;
-  }
-  convolver.buffer = makeImpulse();
-
-  const master = ctx.createGain(); master.gain.value = volume.valueAsNumber;
-
-  // Wire graph
-  const wet = ctx.createGain(); wet.gain.value = 1.0; // internal wet bus
-  src.connect(dry);
-  src.connect(trem);
-  trem.connect(hp).connect(bp).connect(lp).connect(shaper).connect(delay).connect(echoMix);
-  shaper.connect(convolver);
-
-  // Sum to master
-  dry.connect(master);
-  echoMix.connect(master);
-  reverbMix.connect(master);
-  convolver.connect(reverbMix);
-
-  master.connect(ctx.destination);
-
-  // Mute the element so we only hear WebAudio
-  vid.muted = true;
-
-  // --- Controls ---
   function setSpeed(v){
     const clamped = Math.max(0.25, Math.min(2.0, v));
     vid.playbackRate = clamped;
@@ -208,22 +107,16 @@
     speedLabel.textContent = clamped.toFixed(2) + '×';
   }
   function nudgeSpeed(step){ setSpeed(parseFloat(speed.value) + step); }
-  function setVolume(v){ master.gain.value = Math.max(0, Math.min(1, v)); }
+  function setVolume(v){ master ? (master.gain.value = Math.max(0, Math.min(1, v))) : (vid.volume = Math.max(0, Math.min(1, v))); }
 
-  document.addEventListener('click', () => ctx.resume(), { once:true });
-  document.addEventListener('touchstart', () => ctx.resume(), { once:true });
-  document.addEventListener('keydown', () => ctx.resume(), { once:true });
-
-  playBtn.addEventListener('click', async () => { hideStatus(); await ctx.resume().catch(()=>{}); try{ await vid.play(); }catch(e){} });
+  playBtn.addEventListener('click', async () => { hideStatus(); try { await vid.play(); } catch {} });
   pauseBtn.addEventListener('click', () => vid.pause());
   back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
   fwd5.addEventListener('click',  () => { vid.currentTime = Math.min((vid.duration||1e9)-0.001, vid.currentTime + 5); });
-
   speed.addEventListener('input', (e)=> setSpeed(parseFloat(e.target.value)));
   speedDown.addEventListener('click', ()=> nudgeSpeed(-0.25));
   speedUp.addEventListener('click',   ()=> nudgeSpeed(+0.25));
   setSpeed(1.00);
-
   volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
 
   window.addEventListener('keydown', (e) => {
@@ -234,45 +127,103 @@
     if (e.key === ']') nudgeSpeed(+0.05);
   });
 
-  // FX presets
+  // --- Fun FX via WebAudio (optional; activates on first FX click) ---
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let ctx, srcNode, master, hp, bp, lp, shaper, delay, fb, echoMix, convolver, reverbMix, trem, lfo, lfoGain;
+
+  function makeDistortion(amount=0){
+    const k = amount, n = 44100, curve = new Float32Array(n), deg = Math.PI/180;
+    for (let i=0;i<n;i++){ const x = i*2/n - 1; curve[i]=(3+k)*x*20*deg/(Math.PI + k*Math.abs(x)); }
+    return curve;
+  }
+
+  async function ensureAudioGraph(){
+    if (ctx) return;
+    ctx = new AudioCtx();
+    await ctx.resume().catch(()=>{});
+    srcNode = ctx.createMediaElementSource(vid);
+
+    const dry = ctx.createGain(); dry.gain.value = 1.0;
+
+    trem = ctx.createGain(); trem.gain.value = 1.0;
+    lfo = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=0;
+    lfoGain = ctx.createGain(); lfoGain.gain.value=0;
+    lfo.connect(lfoGain).connect(trem.gain); lfo.start();
+
+    hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=20; hp.Q.value=0.7;
+    bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1000; bp.Q.value=0.1;
+    lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=20000; lp.Q.value=0.7;
+
+    shaper = ctx.createWaveShaper(); shaper.curve = makeDistortion(0); shaper.oversample='4x';
+
+    delay = ctx.createDelay(2.0); delay.delayTime.value = 0.18;
+    fb    = ctx.createGain(); fb.gain.value=0.25;
+    echoMix = ctx.createGain(); echoMix.gain.value = 0.0;
+    delay.connect(fb).connect(delay);
+
+    convolver = ctx.createConvolver();
+    reverbMix = ctx.createGain(); reverbMix.gain.value = 0.0;
+    function makeImpulse(seconds=2.0, decay=2.2){
+      const rate=ctx.sampleRate,len=rate*seconds,ir=ctx.createBuffer(2,len,rate);
+      for(let c=0;c<2;c++){ const ch=ir.getChannelData(c);
+        for(let i=0;i<len;i++){ ch[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } }
+      return ir;
+    }
+    convolver.buffer = makeImpulse();
+
+    master = ctx.createGain(); master.gain.value = volume.valueAsNumber;
+
+    // Wire graph
+    srcNode.connect(dry);
+    srcNode.connect(trem);
+    trem.connect(hp).connect(bp).connect(lp).connect(shaper).connect(delay).connect(echoMix);
+    shaper.connect(convolver);
+
+    dry.connect(master);
+    echoMix.connect(master);
+    reverbMix.connect(master);
+    convolver.connect(reverbMix);
+
+    master.connect(ctx.destination);
+
+    // mute element so we only hear WebAudio path
+    vid.muted = true;
+  }
+
   const fxButtons = document.querySelectorAll('[data-fx]');
   function resetFX(){
-    // neutral
-    hp.frequency.value = 20;  hp.Q.value = 0.7;
-    bp.frequency.value = 1000; bp.Q.value = 0.1;
-    lp.frequency.value = 20000; lp.Q.value = 0.7;
+    if (!ctx) return;
+    hp.frequency.value=20; hp.Q.value=0.7;
+    bp.frequency.value=1000; bp.Q.value=0.1;
+    lp.frequency.value=20000; lp.Q.value=0.7;
     shaper.curve = makeDistortion(0);
-    echoMix.gain.value = 0.0; delay.delayTime.value = 0.18; fb.gain.value = 0.25;
-    reverbMix.gain.value = 0.0;
-    lfo.frequency.value = 0; lfoGain.gain.value = 0; trem.gain.value = 1.0;
+    echoMix.gain.value=0.0; delay.delayTime.value=0.18; fb.gain.value=0.25;
+    reverbMix.gain.value=0.0;
+    lfo.frequency.value=0; lfoGain.gain.value=0; trem.gain.value=1.0;
   }
   function setFX(name){
+    if (!ctx) return;
     resetFX();
     switch(name){
       case 'none': break;
-      case 'chipmunk': setSpeed(1.25); hp.frequency.value = 120; lp.frequency.value = 18000; break;
-      case 'deep':     setSpeed(0.85); lp.frequency.value = 4800; break;
-      case 'robot':    hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2; shaper.curve = makeDistortion(75); echoMix.gain.value = 0.06; break;
-      case 'telephone':hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8; break;
-      case 'echo':     echoMix.gain.value = 0.24; delay.delayTime.value = 0.22; fb.gain.value = 0.32; break;
-      case 'cave':     reverbMix.gain.value = 0.38; echoMix.gain.value = 0.10; delay.delayTime.value = 0.12; break;
-      case 'alien':    lfo.frequency.value = 35; lfoGain.gain.value = 0.5; bp.frequency.value = 900; bp.Q.value = 0.9; break;
+      case 'chipmunk': setSpeed(1.25); hp.frequency.value=120; lp.frequency.value=18000; break;
+      case 'deep':     setSpeed(0.85); lp.frequency.value=4800; break;
+      case 'robot':    hp.frequency.value=180; lp.frequency.value=3800; bp.frequency.value=1200; bp.Q.value=1.2; shaper.curve=makeDistortion(75); echoMix.gain.value=0.06; break;
+      case 'telephone':hp.frequency.value=350; lp.frequency.value=3300; bp.frequency.value=1200; bp.Q.value=0.8; break;
+      case 'echo':     echoMix.gain.value=0.24; delay.delayTime.value=0.22; fb.gain.value=0.32; break;
+      case 'cave':     reverbMix.gain.value=0.38; echoMix.gain.value=0.10; delay.delayTime.value=0.12; break;
+      case 'alien':    lfo.frequency.value=35; lfoGain.gain.value=0.5; bp.frequency.value=900; bp.Q.value=0.9; break;
     }
     fxButtons.forEach(b => b.classList.toggle('ghost', b.dataset.fx !== name));
   }
-  fxButtons.forEach(b => b.addEventListener('click', ()=> setFX(b.dataset.fx)));
-  setFX('none');
+  fxButtons.forEach(b => b.addEventListener('click', async (ev) => {
+    await ensureAudioGraph();
+    setFX(ev.currentTarget.dataset.fx);
+  }));
 
-  // Open local file
-  openBtn.addEventListener('click', ()=> fileInput.click());
-  fileInput.addEventListener('change', ()=>{
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    hideStatus();
-    const url = URL.createObjectURL(f);
-    vid.src = url;
-    vid.play().catch(()=>{});
-  });
+  // Default states
+  setSpeed(1.00);
+  setVolume(parseFloat(volume.value));
 })();
 </script>
 </body>
