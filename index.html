@@ -20,12 +20,13 @@
   .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
   .btn {
     appearance: none; border: 0; padding: 10px 12px; border-radius: 12px;
-    background: #0b61ff; color: #fff; font-weight: 700; cursor: pointer;
+    background: #edf3ff; color: #0b61ff; font-weight: 700; cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,.15);
   }
+  .btn.primary { background: #0b61ff; color: #fff; }
+  .btn.pink { background: #ff6ec7; color: #fff; }
   .btn:active { transform: translateY(1px); }
-  .btn.ghost { background: #edf3ff; color: #0b61ff; }
-  .btn.pink { background: #ff6ec7; }
+  .btn.choice.active { background:#0b61ff; color:#fff; }
   video {
     width: 100%; border-radius: 12px; background: #000;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
@@ -41,29 +42,29 @@
     <!-- Status (shows if Colors.mp4 is missing or fails to load) -->
     <div class="row"><div id="status" class="alert"></div></div>
 
-    <!-- Native controls left on for sanity checks -->
+    <!-- Native controls for sanity checks -->
     <video id="vid" src="Colors.mp4" controls playsinline></video>
 
     <!-- Transport + simple speed + volume -->
     <div class="row">
-      <button id="back5" class="btn" title="Back 5s">⟵ 5s</button>
-      <button id="play"  class="btn" title="Play/Pause (Space)">▶ Play</button>
-      <button id="pause" class="btn" title="Pause">⏸ Pause</button>
-      <button id="fwd5"  class="btn" title="Forward 5s">5s ⟶</button>
+      <button id="back5" class="btn primary" title="Back 5s">⟵ 5s</button>
+      <button id="play"  class="btn primary" title="Play/Pause (Space)">▶ Play</button>
+      <button id="pause" class="btn primary" title="Pause">⏸ Pause</button>
+      <button id="fwd5"  class="btn primary" title="Forward 5s">5s ⟶</button>
 
       <span style="margin-left:12px"></span>
-      <button id="slowBtn" class="btn ghost" title="0.85×">Slow</button>
-      <button id="normBtn" class="btn ghost" title="1.00×">None</button>
-      <button id="fastBtn" class="btn ghost" title="1.25×">Fast</button>
+      <button id="slowBtn" class="btn choice" title="0.85×">Slow</button>
+      <button id="normBtn" class="btn choice active" title="1.00×">Off</button>
+      <button id="fastBtn" class="btn choice" title="1.25×">Fast</button>
 
       <span style="margin-left:12px"></span>
       <input id="volume" type="range" min="0" max="1" step="0.01" value="1" title="Volume"/>
     </div>
 
-    <!-- Fun FX (bold, obvious) + FX On/Off -->
+    <!-- Fun FX (bold) + FX On/Off -->
     <div class="row">
-      <button id="fxToggle" class="btn pink">FX: On</button>
-      <button data-fx="none"      class="btn ghost">None</button>
+      <button id="fxToggle" class="btn" title="Toggle effects">FX: Off</button>
+      <button data-fx="none"      class="btn">None</button>
       <button data-fx="chipmunk"  class="btn">Chipmunk</button>
       <button data-fx="deep"      class="btn">Deep</button>
       <button data-fx="robot"     class="btn">Robot</button>
@@ -100,7 +101,15 @@
   const fastBtn  = document.getElementById('fastBtn');
   const volume   = document.getElementById('volume');
 
-  function setSpeed(v){ vid.playbackRate = Math.max(0.25, Math.min(2.0, v)); }
+  function setSpeed(v){
+    const rate = Math.max(0.25, Math.min(2.0, v));
+    vid.playbackRate = rate;
+    // highlight active button
+    [slowBtn, normBtn, fastBtn].forEach(b => b.classList.remove('active'));
+    if (rate < 1.0) slowBtn.classList.add('active');
+    else if (rate > 1.0) fastBtn.classList.add('active');
+    else normBtn.classList.add('active');
+  }
   playBtn.addEventListener('click', async () => { hideStatus(); try{ await vid.play(); }catch{} });
   pauseBtn.addEventListener('click', () => vid.pause());
   back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
@@ -116,11 +125,11 @@
     if (e.key === 'ArrowRight') fwd5.click();
   });
 
-  // Volume: if FX graph isn’t active yet, control element volume; otherwise control master gain
+  // Volume: when FX is OFF, control element volume; when FX is ON, control master gain
   let master = null;
   function setVolume(v){
     const vv = Math.max(0, Math.min(1, v));
-    if (master) master.gain.value = vv; else vid.volume = vv;
+    if (fxEnabled && master) master.gain.value = vv; else vid.volume = vv;
   }
   volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
 
@@ -132,7 +141,7 @@
   let ctx, srcNode, splitter, merger, dryGain, directWet, echoMix, reverbMix, hp, bp, lp, shaper, delay, fb, convolver, trem, lfo, lfoGain;
   let midLMix, midRMix, sideLMix, sideRMix; // gains for reconstruction
   let midBus, sideBus, midHP, midPresence, midDeess, midComp, sideHP, sideAtten;
-  let fxEnabled = true;
+  let fxEnabled = false; // start with FX OFF so the video doesn't auto-mute
 
   function makeDistortion(amount=0){
     const k = amount, n = 44100, curve = new Float32Array(n), deg = Math.PI/180;
@@ -152,39 +161,35 @@
     splitter = ctx.createChannelSplitter(2);
     merger   = ctx.createChannelMerger(2);
 
-    // Split L/R
     srcNode.connect(splitter);
 
-    // Build Mid = (L+R)/2
+    // Mid = (L+R)/2
     const gLM = ctx.createGain(); gLM.gain.value = 0.5;
     const gRM = ctx.createGain(); gRM.gain.value = 0.5;
     splitter.connect(gLM, 0); splitter.connect(gRM, 1);
-    midBus = ctx.createGain(); // sums both gLM + gRM
-
+    midBus = ctx.createGain();
     gLM.connect(midBus); gRM.connect(midBus);
 
     // Speech chain on Mid
     midHP = ctx.createBiquadFilter(); midHP.type = 'highpass'; midHP.frequency.value = 150; midHP.Q.value = 0.7;
-    midPresence = ctx.createBiquadFilter(); midPresence.type='peaking'; midPresence.frequency.value=3000; midPresence.Q.value=1.2; midPresence.gain.value=4; // +4 dB
-    midDeess = ctx.createBiquadFilter(); midDeess.type='peaking'; midDeess.frequency.value=7500; midDeess.Q.value=3.0; midDeess.gain.value=-3; // -3 dB
-    midComp = ctx.createDynamicsCompressor(); midComp.threshold.value = -18; midComp.knee.value = 2; midComp.ratio.value = 3; midComp.attack.value = 0.008; midComp.release.value = 0.12;
+    midPresence = ctx.createBiquadFilter(); midPresence.type='peaking'; midPresence.frequency.value=3000; midPresence.Q.value=1.2; midPresence.gain.value=4;
+    midDeess = ctx.createBiquadFilter(); midDeess.type='peaking'; midDeess.frequency.value=7500; midDeess.Q.value=3.0; midDeess.gain.value=-3;
+    midComp = ctx.createDynamicsCompressor(); midComp.threshold.value=-18; midComp.knee.value=2; midComp.ratio.value=3; midComp.attack.value=0.008; midComp.release.value=0.12;
 
     midBus.connect(midHP).connect(midPresence).connect(midDeess).connect(midComp);
 
-    // Build Side = (L-R)/2 (emphasize center by attenuating side)
+    // Side = (L-R)/2
     const gLS = ctx.createGain(); gLS.gain.value = 0.5;
     const gRS = ctx.createGain(); gRS.gain.value = -0.5;
     splitter.connect(gLS, 0); splitter.connect(gRS, 1);
-    sideBus = ctx.createGain();               // sums gLS + gRS
-    sideHP  = ctx.createBiquadFilter(); sideHP.type='highpass'; sideHP.frequency.value=100; sideHP.Q.value=0.7; // remove muddy lows
-    sideAtten = ctx.createGain(); sideAtten.gain.value = 0.6;   // reduce side 40%
+    sideBus = ctx.createGain();
+    sideHP  = ctx.createBiquadFilter(); sideHP.type='highpass'; sideHP.frequency.value=100; sideHP.Q.value=0.7;
+    sideAtten = ctx.createGain(); sideAtten.gain.value = 0.6;
 
     gLS.connect(sideBus); gRS.connect(sideBus);
     sideBus.connect(sideHP).connect(sideAtten);
 
-    // Reconstruct stereo:
-    // Left  = Mid + Side
-    // Right = Mid - Side
+    // Reconstruct stereo
     midLMix  = ctx.createGain(); midLMix.gain.value = 1.0;
     midRMix  = ctx.createGain(); midRMix.gain.value = 1.0;
     sideLMix = ctx.createGain(); sideLMix.gain.value = 1.0;
@@ -193,19 +198,21 @@
     midComp.connect(midLMix);  midComp.connect(midRMix);
     sideAtten.connect(sideLMix); sideAtten.connect(sideRMix);
 
-    // Sum into stereo merger
-    midLMix.connect(merger, 0, 0);  sideLMix.connect(merger, 0, 0); // to Left
-    midRMix.connect(merger, 0, 1);  sideRMix.connect(merger, 0, 1); // to Right
+    merger.connect = merger.connect.bind(merger); // just to be safe
+    midLMix.connect(merger, 0, 0);
+    sideLMix.connect(merger, 0, 0);
+    midRMix.connect(merger, 0, 1);
+    sideRMix.connect(merger, 0, 1);
 
     // ----- FX chain (after voice boost) -----
     const preFX = ctx.createGain(); // entry to FX/dry mixer
     merger.connect(preFX);
 
-    dryGain  = ctx.createGain();  dryGain.gain.value = 1.0; // default: audible even with FX off
+    dryGain  = ctx.createGain();  dryGain.gain.value = 1.0; // clean (voice-boosted)
     directWet= ctx.createGain();  directWet.gain.value = 0.0;
     echoMix  = ctx.createGain();  echoMix.gain.value = 0.0;
     reverbMix= ctx.createGain();  reverbMix.gain.value = 0.0;
-    master   = ctx.createGain();  master.gain.value = parseFloat(document.getElementById('volume').value);
+    master   = ctx.createGain();  master.gain.value = parseFloat(volume.value);
 
     // Tremolo (for Alien)
     trem = ctx.createGain(); trem.gain.value = 1.0;
@@ -224,7 +231,7 @@
     // Echo & Reverb
     delay = ctx.createDelay(2.0); delay.delayTime.value=0.22;
     fb    = ctx.createGain();     fb.gain.value=0.32;
-    delay.connect(fb).connect(delay); // feedback
+    delay.connect(fb).connect(delay);
 
     convolver = ctx.createConvolver();
     (function makeImpulse(seconds=2.0, decay=2.2){
@@ -242,15 +249,14 @@
     shaper.connect(convolver);               // reverb
     convolver.connect(reverbMix);
 
-    // Mix to master
+    // Mix to master (we'll only hear this when FX is ON)
     dryGain.connect(master);
     directWet.connect(master);
     echoMix.connect(master);
     reverbMix.connect(master);
     master.connect(ctx.destination);
 
-    // Avoid double audio
-    vid.muted = true;
+    // IMPORTANT: don't mute video here; we only mute when FX turns ON
   }
 
   function resetFX(){
@@ -269,8 +275,8 @@
     lfo.frequency.value = 0;
     lfoGain.gain.value  = 0;
     trem.gain.value     = 1.0;
-    // When FX disabled, dry is full
-    if (!fxEnabled) dryGain.gain.value = 1.0;
+    // Dry path full if FX enabled (we'll manage mute separately)
+    if (fxEnabled) dryGain.gain.value = 1.0;
   }
 
   function setFX(name){
@@ -278,11 +284,11 @@
     resetFX();
 
     // Make effects obvious by default when FX enabled
-    dryGain.gain.value = fxEnabled ? 0.0 : 1.0;
+    dryGain.gain.value = 0.0; // start wet; presets may reintroduce dry
 
     switch(name){
       case 'none':
-        dryGain.gain.value = 1.0; // pure voice-boosted mix
+        dryGain.gain.value = 1.0; // voice-boosted clean
         break;
 
       case 'telephone':
@@ -319,55 +325,66 @@
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
 
-      case 'chipmunk': // fun: speed up (pitch up)
+      case 'chipmunk': // fun: pitch via speed up
         directWet.gain.value = 1.0;
         hp.frequency.value = 120; lp.frequency.value = 18000;
         setSpeed(1.25);
         break;
 
-      case 'deep': // fun: slow (pitch down)
+      case 'deep': // fun: pitch via slow
         directWet.gain.value = 1.0;
         lp.frequency.value = 4800;
         setSpeed(0.85);
         break;
     }
 
-    // Update button styles
-    fxButtons.forEach(b => b.classList.toggle('ghost', b.dataset.fx !== name));
+    // Button styles
+    fxButtons.forEach(b => b.classList.remove('primary'));
+    const active = Array.from(fxButtons).find(b => b.dataset.fx === name);
+    if (active) active.classList.add('primary');
   }
 
-  // FX master on/off
-  function updateFxToggleButton(){
-    fxToggle.textContent = fxEnabled ? 'FX: On' : 'FX: Off';
-    fxToggle.classList.toggle('pink', fxEnabled);
-    fxToggle.classList.toggle('ghost', !fxEnabled);
+  function setFxEnabled(on){
+    fxEnabled = on;
+    // Audio routing: when FX ON, listen to WebAudio (master) and mute element.
+    // When FX OFF, unmute element and silence master.
+    if (fxEnabled){
+      vid.muted = true;
+      if (master) master.gain.value = parseFloat(volume.value);
+      fxToggle.textContent = 'FX: On';
+      fxToggle.classList.add('pink');
+      fxToggle.classList.remove('primary');
+    } else {
+      vid.muted = false;
+      if (master) master.gain.value = 0.0;
+      fxToggle.textContent = 'FX: Off';
+      fxToggle.classList.remove('pink');
+      fxToggle.classList.remove('primary');
+    }
   }
+
+  // Toggle FX master on/off
   fxToggle.addEventListener('click', async () => {
     await ensureAudioGraph();
-    fxEnabled = !fxEnabled;
-    updateFxToggleButton();
+    setFxEnabled(!fxEnabled);
     if (fxEnabled){
-      const active = document.querySelector('[data-fx]:not(.ghost)')?.dataset.fx || 'none';
+      // If no preset picked yet, default to 'none' (voice-boosted clean)
+      const active = document.querySelector('[data-fx].primary')?.dataset.fx || 'none';
       setFX(active);
-    } else {
-      resetFX();
-      dryGain.gain.value = 1.0; // pure voice-boosted mix
     }
   });
-  updateFxToggleButton();
 
   // Preset buttons
   fxButtons.forEach(b => b.addEventListener('click', async (ev) => {
     await ensureAudioGraph();
-    fxEnabled = true; updateFxToggleButton();
+    setFxEnabled(true);
     setFX(ev.currentTarget.dataset.fx);
   }));
 
-  // Build the graph (voice boost) on first Play or FX click
-  playBtn.addEventListener('click', ensureAudioGraph, { once:true });
-  fxButtons.forEach(b => b.addEventListener('click', ensureAudioGraph, { once:true }));
+  // Start with FX OFF so playing doesn't mute the video
+  setFxEnabled(false);
 
-  // Initialize volume display
+  // Volume init
   setVolume(parseFloat(volume.value));
 })();
 </script>
