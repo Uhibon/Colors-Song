@@ -1,97 +1,310 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>August 1 Sentences</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css"/>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-      font-family: sans-serif;
-    }
-    .swiper {
-      width: 100%;
-      height: 100vh;
-    }
-    .swiper-slide {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #fff;
-    }
-    .swiper-slide img {
-      width: 90%;
-      height: auto;
-      max-height: 90vh;
-      object-fit: contain;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cute Video Lab — Speed & Voice FX</title>
+<style>
+  :root { --card-max-w: 92vw; --card-max-h: 92svh; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: #e6f2ff;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap {
+    width: min(1000px, var(--card-max-w));
+    max-height: var(--card-max-h);
+    background: rgba(255,255,255,.95);
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.15);
+    padding: 12px 14px 16px;
+    box-sizing: border-box;
+    display: grid;
+    gap: 12px;
+    grid-template-rows: auto 1fr auto auto;
+  }
+  .topbar, .controls, .fxbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  }
+  video {
+    width: 100%;
+    border-radius: 12px;
+    background: #000;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
+  }
+  .btn {
+    appearance: none; border: 0; padding: 10px 12px; border-radius: 12px;
+    background: #0b61ff; color: #fff; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost { background: #edf3ff; color: #0b61ff; }
+  .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .small { font-size: .9rem; color: #05367e; font-weight: 600; }
+  input[type="range"] { width: 240px; }
+  .chip { padding: 8px 10px; border-radius: 999px; background: #eef5ff; color: #05367e; font-weight: 700; }
+  .fxbar .btn { background: #ff6ec7; }
+  .fxbar .btn.ghost { background: #ffe3f4; color: #b9046a; }
+</style>
 </head>
 <body>
-  <div class="swiper">
-    <div class="swiper-wrapper">
-      <div class="swiper-slide"><img src="000_01.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_02.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_03.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_04.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_05.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_06.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_07.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_08.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_09.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_10.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_11.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_12.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_13.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_14.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_15.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_16.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_17.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_18.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_19.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_20.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_21.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_22.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_23.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_24.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_25.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_26.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_27.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_28.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_29.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_30.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_31.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_32.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_33.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_34.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_35.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_36.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_37.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_38.jpg" alt="Slide"></div>
-      <div class="swiper-slide"><img src="000_39.jpg" alt="Slide"></div>
+  <div class="wrap">
+    <div class="topbar row">
+      <button id="openBtn" class="btn ghost" title="Open MP4">📁 Open MP4</button>
+      <span class="chip">Speed & Voice FX for <b>colors.mp4</b> (or any file)</span>
+      <input id="fileInput" type="file" accept="video/mp4,video/webm,video/ogg" hidden />
     </div>
-    <div class="swiper-pagination"></div>
-    <div class="swiper-button-prev"></div>
-    <div class="swiper-button-next"></div>
+
+    <video id="vid" src="colors.mp4" playsinline></video>
+
+    <div class="controls">
+      <div class="row">
+        <button id="back5" class="btn" title="Back 5s">⟵ 5s</button>
+        <button id="play"  class="btn" title="Play/Pause (Space)">▶ Play</button>
+        <button id="pause" class="btn" title="Pause">⏸ Pause</button>
+        <button id="fwd5"  class="btn" title="Forward 5s">5s ⟶</button>
+      </div>
+      <div class="row">
+        <span class="small">Speed</span>
+        <button id="speedDown" class="btn ghost" title="–0.25×">–</button>
+        <input id="speed" type="range" min="0.25" max="2.0" step="0.05" value="1.00"/>
+        <button id="speedUp" class="btn ghost" title="+0.25×">+</button>
+        <span id="speedLabel" class="chip">1.00×</span>
+      </div>
+      <div class="row">
+        <span class="small">Volume</span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="1"/>
+      </div>
+    </div>
+
+    <div class="fxbar">
+      <button data-fx="none"      class="btn ghost">None</button>
+      <button data-fx="chipmunk"  class="btn">Chipmunk</button>
+      <button data-fx="deep"      class="btn">Deep</button>
+      <button data-fx="robot"     class="btn">Robot</button>
+      <button data-fx="telephone" class="btn">Telephone</button>
+      <button data-fx="echo"      class="btn">Echo</button>
+      <button data-fx="cave"      class="btn">Cave</button>
+      <button data-fx="alien"     class="btn">Alien</button>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
-  <script>
-    const swiper = new Swiper('.swiper', {
-      loop: false,
-      pagination: {
-        el: '.swiper-pagination',
-        clickable: true
-      },
-      navigation: {
-        nextEl: '.swiper-button-next',
-        prevEl: '.swiper-button-prev'
+<script>
+(async function(){
+  const vid = document.getElementById('vid');
+  const playBtn = document.getElementById('play');
+  const pauseBtn = document.getElementById('pause');
+  const back5 = document.getElementById('back5');
+  const fwd5  = document.getElementById('fwd5');
+  const speed = document.getElementById('speed');
+  const speedLabel = document.getElementById('speedLabel');
+  const speedDown = document.getElementById('speedDown');
+  const speedUp   = document.getElementById('speedUp');
+  const volume = document.getElementById('volume');
+  const openBtn = document.getElementById('openBtn');
+  const fileInput = document.getElementById('fileInput');
+
+  // --- Audio Graph (Web Audio) ---
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  await ctx.resume().catch(()=>{});
+
+  // Route video audio into WebAudio
+  const src = ctx.createMediaElementSource(vid);
+  // Split dry/wet
+  const dry = ctx.createGain();       dry.gain.value = 1.0;
+  const wet = ctx.createGain();       wet.gain.value = 0.0; // start FX off
+  // Tremolo (for "alien")
+  const trem = ctx.createGain();      trem.gain.value = 1.0;  // baseline
+  const lfo  = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0; // off
+  const lfoGain = ctx.createGain();   lfoGain.gain.value = 0; // depth
+  lfo.connect(lfoGain).connect(trem.gain); lfo.start();
+
+  // Filters & FX chain
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 20; hp.Q.value = 0.7;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000; bp.Q.value = 0.5;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = 0.7;
+
+  // Distortion (robotic rasp)
+  const shaper = ctx.createWaveShaper();
+  function makeDistortion(amount=0){
+    const k = amount, n = 44100, curve = new Float32Array(n);
+    const deg = Math.PI/180;
+    for (let i=0;i<n;i++){
+      const x = i * 2 / n - 1;
+      curve[i] = (3+k)*x*20*deg / (Math.PI + k*Math.abs(x));
+    }
+    return curve;
+  }
+  shaper.curve = makeDistortion(0); shaper.oversample = '4x';
+
+  // Echo
+  const delay = ctx.createDelay(2.0); delay.delayTime.value = 0.18; // short echo
+  const fb    = ctx.createGain();     fb.gain.value = 0.25;         // feedback
+  const echoMix = ctx.createGain();   echoMix.gain.value = 0.0;     // wet level
+  delay.connect(fb).connect(delay);   // feedback loop
+
+  // Reverb (cave) with generated impulse response
+  const convolver = ctx.createConvolver();
+  const reverbMix = ctx.createGain(); reverbMix.gain.value = 0.0;
+  function makeImpulse(seconds=2.2, decay=2.5){
+    const rate = ctx.sampleRate;
+    const len = rate * seconds;
+    const ir = ctx.createBuffer(2, len, rate);
+    for (let c=0;c<2;c++){
+      const ch = ir.getChannelData(c);
+      for (let i=0;i<len;i++){
+        ch[i] = (Math.random()*2-1) * Math.pow(1 - i/len, decay);
       }
-    });
-  </script>
+    }
+    return ir;
+  }
+  convolver.buffer = makeImpulse();
+
+  // Master
+  const master = ctx.createGain(); master.gain.value = volume.valueAsNumber;
+
+  // Wire graph:
+  // dry path
+  src.connect(dry);
+  // wet path (trem -> hp->bp->lp->shaper->delay->(mix)->reverb->(mix))
+  src.connect(trem);
+  trem.connect(hp).connect(bp).connect(lp).connect(shaper).connect(delay).connect(echoMix);
+  shaper.connect(reverbMix);  // some reverb before echo sounds nice; also feed separate
+  convolver.connect(reverbMix);
+
+  // Sum dry + wet + effects to master
+  dry.connect(master);
+  echoMix.connect(master);
+  reverbMix.connect(master);
+
+  // Send to speakers
+  master.connect(ctx.destination);
+
+  // Mute the video element itself so we only hear the WebAudio mix
+  vid.muted = true;
+
+  // --- Controls ---
+  function setSpeed(v){
+    const clamped = Math.max(0.25, Math.min(2.0, v));
+    vid.playbackRate = clamped;
+    speed.value = clamped.toFixed(2);
+    speedLabel.textContent = clamped.toFixed(2) + '×';
+  }
+  function nudgeSpeed(step){
+    setSpeed(parseFloat(speed.value) + step);
+  }
+  function setVolume(v){
+    master.gain.value = Math.max(0, Math.min(1, v));
+  }
+
+  playBtn.addEventListener('click', async () => { await ctx.resume().catch(()=>{}); try{ await vid.play(); }catch{}; });
+  pauseBtn.addEventListener('click', () => vid.pause());
+  back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
+  fwd5.addEventListener('click',  () => { vid.currentTime = Math.min((vid.duration||1e9)-0.001, vid.currentTime + 5); });
+
+  speed.addEventListener('input', (e)=> setSpeed(parseFloat(e.target.value)));
+  speedDown.addEventListener('click', ()=> nudgeSpeed(-0.25));
+  speedUp.addEventListener('click',   ()=> nudgeSpeed(+0.25));
+  setSpeed(1.00);
+
+  volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
+
+  window.addEventListener('keydown', (e)=>{
+    if (e.code === 'Space'){ e.preventDefault(); if (vid.paused) playBtn.click(); else pauseBtn.click(); }
+    if (e.key === 'ArrowLeft')  back5.click();
+    if (e.key === 'ArrowRight') fwd5.click();
+    if (e.key === '[') nudgeSpeed(-0.05);
+    if (e.key === ']') nudgeSpeed(+0.05);
+  });
+
+  // --- FX presets ---
+  const fxButtons = document.querySelectorAll('[data-fx]');
+  function resetFX(){
+    // base state
+    dry.gain.value = 1.0;
+    wet.gain.value = 0.0;         // (we’re not summing wet directly; using reverb/echo mixes)
+    // filters neutral
+    hp.frequency.value = 20;  hp.Q.value = 0.7;
+    bp.frequency.value = 1000; bp.Q.value = 0.1;
+    lp.frequency.value = 20000; lp.Q.value = 0.7;
+    // distortion off
+    shaper.curve = makeDistortion(0);
+    // echo off
+    echoMix.gain.value = 0.0; delay.delayTime.value = 0.18; fb.gain.value = 0.25;
+    // reverb off
+    reverbMix.gain.value = 0.0;
+    // tremolo off
+    lfo.frequency.value = 0; lfoGain.gain.value = 0; trem.gain.value = 1.0;
+  }
+  function setFX(name){
+    resetFX();
+    switch(name){
+      case 'none':
+        break;
+      case 'chipmunk':
+        // simple & fun: faster playback (raises pitch)
+        setSpeed(1.25);
+        // brighten a bit
+        hp.frequency.value = 120; lp.frequency.value = 18000;
+        break;
+      case 'deep':
+        setSpeed(0.85);
+        // warm low-pass
+        lp.frequency.value = 4800;
+        break;
+      case 'robot':
+        // crunchy band-limited + distortion
+        hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2;
+        shaper.curve = makeDistortion(75);
+        echoMix.gain.value = 0.06; // tiny room
+        break;
+      case 'telephone':
+        // narrow band (approx 300–3400 Hz)
+        hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8;
+        break;
+      case 'echo':
+        echoMix.gain.value = 0.24; delay.delayTime.value = 0.22; fb.gain.value = 0.32;
+        break;
+      case 'cave':
+        reverbMix.gain.value = 0.38; echoMix.gain.value = 0.10; delay.delayTime.value = 0.12;
+        break;
+      case 'alien':
+        // amplitude wobble (ring-mod-ish)
+        lfo.frequency.value = 35; lfoGain.gain.value = 0.5; // depth
+        // little bandpass tilt
+        bp.frequency.value = 900; bp.Q.value = 0.9;
+        break;
+    }
+    // cute selection styling
+    fxButtons.forEach(b => b.classList.toggle('ghost', b.dataset.fx !== name));
+  }
+  fxButtons.forEach(b => b.addEventListener('click', ()=> setFX(b.dataset.fx)));
+  setFX('none');
+
+  // Open local file
+  openBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', ()=>{
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    vid.src = url;
+    vid.play().catch(()=>{});
+  });
+
+  // Start audio context on first interaction (iOS)
+  ['click','touchstart','keydown'].forEach(ev=> document.addEventListener(ev, ()=> ctx.resume(), { once:true }));
+
+  // Connect the wet FX branch into mixes (done once, kept 0 when unused)
+  // (We already wired: src->trem->hp->bp->lp->shaper->delay->echoMix; plus shaper->reverbMix via convolver)
+  // Feed shaper to convolver input too:
+  shaper.connect(convolver);
+})();
+</script>
 </body>
 </html>
