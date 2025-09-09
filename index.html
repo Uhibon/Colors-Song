@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Colors Video — Voice Boost + Fun FX (No Muting, Auto Volume)</title>
+<title>Colors Video — Voice Boost + Fun FX (No Muting)</title>
 <style>
   :root { --card-max-w: 92vw; --card-max-h: 92svh; }
   body {
@@ -26,6 +26,7 @@
   .btn.primary { background: #0b61ff; color: #fff; }
   .btn:active { transform: translateY(1px); }
   .btn.choice.active { background:#0b61ff; color:#fff; }
+  .btn.fx.active { background:#0b61ff; color:#fff; }
   video {
     width: 100%; border-radius: 12px; background: #000;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.06);
@@ -62,32 +63,24 @@
 
     <!-- Fun FX (layered on top; never mutes original) -->
     <div class="row">
-      <button data-fx="none"      class="btn">None</button>
-      <button data-fx="chipmunk"  class="btn">Chipmunk</button>
-      <button data-fx="deep"      class="btn">Deep</button>
-      <button data-fx="robot"     class="btn">Robot</button>
-      <button data-fx="telephone" class="btn">Telephone</button>
-      <button data-fx="echo"      class="btn">Echo</button>
-      <button data-fx="cave"      class="btn">Cave</button>
-      <button data-fx="alien"     class="btn">Alien</button>
+      <button data-fx="none"      class="btn fx">None</button>
+      <button data-fx="chipmunk"  class="btn fx">Chipmunk</button>
+      <button data-fx="deep"      class="btn fx">Deep</button>
+      <button data-fx="robot"     class="btn fx">Robot</button>
+      <button data-fx="telephone" class="btn fx">Telephone</button>
+      <button data-fx="echo"      class="btn fx">Echo</button>
+      <button data-fx="cave"      class="btn fx">Cave</button>
+      <button data-fx="alien"     class="btn fx">Alien</button>
     </div>
   </div>
 
 <script>
-(async function(){
-  const DEFAULT_SRC = 'Colors.mp4'; // exact case for GitHub Pages
+(() => {
+  const DEFAULT_SRC = 'Colors.mp4';
   const vid = document.getElementById('vid');
   const statusEl = document.getElementById('status');
 
-  // --- Status helper ---
-  function showStatus(msg){ statusEl.innerHTML = msg; statusEl.style.display = 'block'; }
-  function hideStatus(){ statusEl.style.display = 'none'; }
-  vid.addEventListener('error', () => {
-    showStatus(`Couldn’t load <b>${DEFAULT_SRC}</b>.<br>
-      Make sure it’s in the same folder and the name matches <b>exactly</b> (case-sensitive).`);
-  });
-
-  // --- Transport & simple speed ---
+  // Buttons / controls
   const playBtn  = document.getElementById('play');
   const pauseBtn = document.getElementById('pause');
   const back5    = document.getElementById('back5');
@@ -96,7 +89,18 @@
   const normBtn  = document.getElementById('normBtn');
   const fastBtn  = document.getElementById('fastBtn');
   const volume   = document.getElementById('volume');
+  const fxButtons = document.querySelectorAll('[data-fx]'); // <— declared ONCE
 
+  // Status helper
+  function showStatus(msg){ statusEl.innerHTML = msg; statusEl.style.display = 'block'; }
+  function hideStatus(){ statusEl.style.display = 'none'; }
+
+  vid.addEventListener('error', () => {
+    showStatus(`Couldn’t load <b>${DEFAULT_SRC}</b>.<br>
+      Make sure it’s in the same folder and the name matches <b>exactly</b> (case-sensitive).`);
+  });
+
+  // Speed + volume
   function setSpeed(v){
     const rate = Math.max(0.25, Math.min(2.0, v));
     vid.playbackRate = rate;
@@ -105,19 +109,20 @@
     else if (rate > 1.0) fastBtn.classList.add('active');
     else normBtn.classList.add('active');
   }
-
-  // Ensure volume is applied at play time (so it never starts silent)
+  let master = null; // FX layer volume
   function setVolume(v){
     const vv = Math.max(0, Math.min(1, v));
-    vid.volume = vv;
-    if (master) master.gain.value = vv; // keep FX layer level matched
+    vid.volume = vv;            // original audio
+    if (master) master.gain.value = vv; // processed layer
   }
 
+  // Transport
   playBtn.addEventListener('click', async () => {
     hideStatus();
-    // Apply current slider volume before playing
-    setVolume(parseFloat(volume.value) || 1);
+    setVolume(parseFloat(volume.value) || 1); // ensure audible on play
     try { await vid.play(); } catch {}
+    // build audio graph after first play (mobile-friendly)
+    ensureAudioGraph();
   });
   pauseBtn.addEventListener('click', () => vid.pause());
   back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
@@ -126,6 +131,8 @@
   normBtn.addEventListener('click', () => setSpeed(1.00));
   fastBtn.addEventListener('click', () => setSpeed(1.25));
   setSpeed(1.00);
+  volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
+  setVolume(parseFloat(volume.value));
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space'){ e.preventDefault(); if (vid.paused) playBtn.click(); else pauseBtn.click(); }
@@ -133,16 +140,8 @@
     if (e.key === 'ArrowRight') fwd5.click();
   });
 
-  // Volume slider controls both original video and FX bus
-  let master = null;
-  volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
-  // Initialize volume on load too
-  setVolume(parseFloat(volume.value));
-
-  // --- WebAudio: Voice Boost (mid/side + speech EQ/comp) + FX (layered, never mutes) ---
-  const fxButtons  = document.querySelectorAll('[data-fx]');
-  const AudioCtx   = window.AudioContext || window.webkitAudioContext;
-
+  // ===== WebAudio: voice-boosted FX layer (never mutes original) =====
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, srcNode, splitter, merger, directWet, echoMix, reverbMix, hp, bp, lp, shaper, delay, fb, convolver, trem, lfo, lfoGain;
   let midLMix, midRMix, sideLMix, sideRMix;
   let midBus, sideBus, midHP, midPresence, midDeess, midComp, sideHP, sideAtten;
@@ -155,97 +154,96 @@
 
   async function ensureAudioGraph(){
     if (ctx) return;
-    ctx = new AudioCtx();
-    await ctx.resume().catch(()=>{});
+    try {
+      ctx = new AudioCtx();
+      await ctx.resume().catch(()=>{});
 
-    // Source -> split L/R
-    srcNode  = ctx.createMediaElementSource(vid);
-    splitter = ctx.createChannelSplitter(2);
-    merger   = ctx.createChannelMerger(2);
-    srcNode.connect(splitter);
+      // Source -> split L/R
+      srcNode  = ctx.createMediaElementSource(vid);
+      splitter = ctx.createChannelSplitter(2);
+      merger   = ctx.createChannelMerger(2);
+      srcNode.connect(splitter);
 
-    // Mid = (L+R)/2 (emphasize center vocals)
-    const gLM = ctx.createGain(); gLM.gain.value = 0.5;
-    const gRM = ctx.createGain(); gRM.gain.value = 0.5;
-    splitter.connect(gLM, 0); splitter.connect(gRM, 1);
-    midBus = ctx.createGain();
-    gLM.connect(midBus); gRM.connect(midBus);
+      // Mid = (L+R)/2
+      const gLM = ctx.createGain(); gLM.gain.value = 0.5;
+      const gRM = ctx.createGain(); gRM.gain.value = 0.5;
+      splitter.connect(gLM, 0); splitter.connect(gRM, 1);
+      midBus = ctx.createGain();
+      gLM.connect(midBus); gRM.connect(midBus);
 
-    // Speech chain on Mid
-    midHP = ctx.createBiquadFilter(); midHP.type = 'highpass'; midHP.frequency.value = 150; midHP.Q.value = 0.7;
-    midPresence = ctx.createBiquadFilter(); midPresence.type='peaking'; midPresence.frequency.value=3000; midPresence.Q.value=1.2; midPresence.gain.value=4;
-    midDeess = ctx.createBiquadFilter(); midDeess.type='peaking'; midDeess.frequency.value=7500; midDeess.Q.value=3.0; midDeess.gain.value=-3;
-    midComp = ctx.createDynamicsCompressor(); midComp.threshold.value=-18; midComp.knee.value=2; midComp.ratio.value=3; midComp.attack.value=0.008; midComp.release.value=0.12;
-    midBus.connect(midHP).connect(midPresence).connect(midDeess).connect(midComp);
+      // Speech chain on Mid
+      midHP = ctx.createBiquadFilter(); midHP.type = 'highpass'; midHP.frequency.value = 150; midHP.Q.value = 0.7;
+      midPresence = ctx.createBiquadFilter(); midPresence.type='peaking'; midPresence.frequency.value=3000; midPresence.Q.value=1.2; midPresence.gain.value=4;
+      midDeess = ctx.createBiquadFilter(); midDeess.type='peaking'; midDeess.frequency.value=7500; midDeess.Q.value=3.0; midDeess.gain.value=-3;
+      midComp = ctx.createDynamicsCompressor(); midComp.threshold.value=-18; midComp.knee.value=2; midComp.ratio.value=3; midComp.attack.value=0.008; midComp.release.value=0.12;
+      midBus.connect(midHP).connect(midPresence).connect(midDeess).connect(midComp);
 
-    // Side = (L-R)/2 (attenuate sides a bit)
-    const gLS = ctx.createGain(); gLS.gain.value = 0.5;
-    const gRS = ctx.createGain(); gRS.gain.value = -0.5;
-    splitter.connect(gLS, 0); splitter.connect(gRS, 1);
-    sideBus = ctx.createGain();
-    sideHP  = ctx.createBiquadFilter(); sideHP.type='highpass'; sideHP.frequency.value=100; sideHP.Q.value=0.7;
-    sideAtten = ctx.createGain(); sideAtten.gain.value = 0.6;
-    gLS.connect(sideBus); gRS.connect(sideBus);
-    sideBus.connect(sideHP).connect(sideAtten);
+      // Side = (L-R)/2  (reduce sides ~40%)
+      const gLS = ctx.createGain(); gLS.gain.value = 0.5;
+      const gRS = ctx.createGain(); gRS.gain.value = -0.5;
+      splitter.connect(gLS, 0); splitter.connect(gRS, 1);
+      sideBus = ctx.createGain();
+      sideHP  = ctx.createBiquadFilter(); sideHP.type='highpass'; sideHP.frequency.value=100; sideHP.Q.value=0.7;
+      sideAtten = ctx.createGain(); sideAtten.gain.value = 0.6;
+      gLS.connect(sideBus); gRS.connect(sideBus);
+      sideBus.connect(sideHP).connect(sideAtten);
 
-    // Reconstruct stereo for processed layer
-    midLMix  = ctx.createGain(); midLMix.gain.value = 1.0;
-    midRMix  = ctx.createGain(); midRMix.gain.value = 1.0;
-    sideLMix = ctx.createGain(); sideLMix.gain.value = 1.0;
-    sideRMix = ctx.createGain(); sideRMix.gain.value = -1.0;
-    midComp.connect(midLMix);  midComp.connect(midRMix);
-    sideAtten.connect(sideLMix); sideAtten.connect(sideRMix);
-    midLMix.connect(merger, 0, 0);  sideLMix.connect(merger, 0, 0);
-    midRMix.connect(merger, 0, 1);  sideRMix.connect(merger, 0, 1);
+      // Reconstruct stereo for processed layer
+      midLMix  = ctx.createGain(); midLMix.gain.value = 1.0;
+      midRMix  = ctx.createGain(); midRMix.gain.value = 1.0;
+      sideLMix = ctx.createGain(); sideLMix.gain.value = 1.0;
+      sideRMix = ctx.createGain(); sideRMix.gain.value = -1.0;
+      midComp.connect(midLMix);  midComp.connect(midRMix);
+      sideAtten.connect(sideLMix); sideAtten.connect(sideRMix);
+      midLMix.connect(merger, 0, 0);  sideLMix.connect(merger, 0, 0);
+      midRMix.connect(merger, 0, 1);  sideRMix.connect(merger, 0, 1);
 
-    // FX chain on top of voice-boosted stereo
-    const preFX = ctx.createGain();
-    merger.connect(preFX);
+      // FX chain (post voice-boost)
+      const preFX = ctx.createGain();
+      merger.connect(preFX);
 
-    // Processed buses (no dry duplication — original video provides dry)
-    directWet = ctx.createGain();  directWet.gain.value = 0.0;
-    echoMix   = ctx.createGain();  echoMix.gain.value   = 0.0;
-    reverbMix = ctx.createGain();  reverbMix.gain.value = 0.0;
+      directWet = ctx.createGain();  directWet.gain.value = 0.0;
+      echoMix   = ctx.createGain();  echoMix.gain.value   = 0.0;
+      reverbMix = ctx.createGain();  reverbMix.gain.value = 0.0;
 
-    // Tremolo (Alien)
-    trem = ctx.createGain(); trem.gain.value = 1.0;
-    lfo  = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value = 0;
-    lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
-    lfo.connect(lfoGain).connect(trem.gain); lfo.start();
+      trem = ctx.createGain(); trem.gain.value = 1.0;
+      lfo  = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value = 0;
+      lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
+      lfo.connect(lfoGain).connect(trem.gain); lfo.start();
 
-    // Filters
-    hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=20; hp.Q.value=0.7;
-    bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1000; bp.Q.value=0.1;
-    lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=20000; lp.Q.value=0.7;
+      hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=20; hp.Q.value=0.7;
+      bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1000; bp.Q.value=0.1;
+      lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=20000; lp.Q.value=0.7;
 
-    // Distortion
-    shaper = ctx.createWaveShaper(); shaper.curve = makeDistortion(0); shaper.oversample='4x';
+      shaper = ctx.createWaveShaper(); shaper.curve = makeDistortion(0); shaper.oversample='4x';
 
-    // Echo & Reverb
-    delay = ctx.createDelay(2.0); delay.delayTime.value=0.22;
-    fb    = ctx.createGain();     fb.gain.value=0.32;
-    delay.connect(fb).connect(delay);
+      delay = ctx.createDelay(2.0); delay.delayTime.value=0.22;
+      fb    = ctx.createGain();     fb.gain.value=0.32;
+      delay.connect(fb).connect(delay);
 
-    convolver = ctx.createConvolver();
-    (function makeImpulse(seconds=2.0, decay=2.2){
-      const rate=ctx.sampleRate,len=rate*seconds,ir=ctx.createBuffer(2,len,rate);
-      for(let c=0;c<2;c++){ const ch=ir.getChannelData(c);
-        for(let i=0;i<len;i++){ ch[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } }
-      convolver.buffer = ir;
-    })();
+      convolver = ctx.createConvolver();
+      (function makeImpulse(seconds=2.0, decay=2.2){
+        const rate=ctx.sampleRate,len=rate*seconds,ir=ctx.createBuffer(2,len,rate);
+        for(let c=0;c<2;c++){ const ch=ir.getChannelData(c);
+          for(let i=0;i<len;i++){ ch[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } }
+        convolver.buffer = ir;
+      })();
 
-    // Wire processed chain
-    preFX.connect(trem).connect(hp).connect(bp).connect(lp).connect(shaper);
-    shaper.connect(directWet);
-    shaper.connect(delay).connect(echoMix);
-    shaper.connect(convolver).connect(reverbMix);
+      preFX.connect(trem).connect(hp).connect(bp).connect(lp).connect(shaper);
+      shaper.connect(directWet);
+      shaper.connect(delay).connect(echoMix);
+      shaper.connect(convolver).connect(reverbMix);
 
-    // Master out for processed path (adds on top)
-    master = ctx.createGain(); master.gain.value = parseFloat(volume.value);
-    directWet.connect(master);
-    echoMix.connect(master);
-    reverbMix.connect(master);
-    master.connect(ctx.destination);
+      // Master for processed layer (adds on top)
+      master = ctx.createGain(); master.gain.value = parseFloat(volume.value) || 1;
+      directWet.connect(master);
+      echoMix.connect(master);
+      reverbMix.connect(master);
+      master.connect(ctx.destination);
+    } catch (e) {
+      console.error(e);
+      showStatus('Audio setup error. Try reloading the page.');
+    }
   }
 
   function resetFX(){
@@ -265,71 +263,59 @@
   function setFX(name){
     if (!ctx) return;
     resetFX();
-
-    // Only ADD processed sound on top of original
     switch(name){
-      case 'none': /* leave wet at 0 */ break;
-
+      case 'none': break;
       case 'telephone':
         directWet.gain.value = 0.9;
         hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8;
         break;
-
       case 'robot':
         directWet.gain.value = 0.9;
         hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2;
         shaper.curve = makeDistortion(75);
         echoMix.gain.value = 0.08;
         break;
-
       case 'cave':
         directWet.gain.value = 0.2;
         reverbMix.gain.value = 0.45;
         echoMix.gain.value   = 0.10;
         delay.delayTime.value= 0.12;
         break;
-
       case 'echo':
         directWet.gain.value = 0.2;
         echoMix.gain.value   = 0.30;
         delay.delayTime.value= 0.22; fb.gain.value=0.32;
         break;
-
       case 'alien':
         directWet.gain.value = 0.9;
         bp.frequency.value = 900; bp.Q.value = 0.9;
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
-
-      case 'chipmunk': // playful: speed up (pitch up)
+      case 'chipmunk':
         directWet.gain.value = 0.9;
         hp.frequency.value = 120; lp.frequency.value = 18000;
         setSpeed(1.25);
         break;
-
-      case 'deep': // playful: slow (pitch down)
+      case 'deep':
         directWet.gain.value = 0.9;
         lp.frequency.value = 4800;
         setSpeed(0.85);
         break;
     }
-
-    // Button styles
-    fxButtons.forEach(b => b.classList.remove('primary'));
-    const active = Array.from(fxButtons).find(b => b.dataset.fx === name);
-    if (active) active.classList.add('primary');
+    // highlight active FX button
+    fxButtons.forEach(b => b.classList.toggle('active', b.dataset.fx === name));
   }
 
-  // Preset buttons (building the graph on first use)
-  const fxButtons  = document.querySelectorAll('[data-fx]');
-  fxButtons.forEach(b => b.addEventListener('click', async (ev) => {
-    await ensureAudioGraph();
-    setFX(ev.currentTarget.dataset.fx);
-  }));
+  // FX button wiring (build graph on first use)
+  fxButtons.forEach(btn => {
+    btn.addEventListener('click', async (ev) => {
+      await ensureAudioGraph();
+      setFX(ev.currentTarget.dataset.fx);
+    });
+  });
 
   // Build audio graph on first play too (helps mobile)
   playBtn.addEventListener('click', ensureAudioGraph, { once:true });
-
 })();
 </script>
 </body>
