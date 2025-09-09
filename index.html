@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Colors Video — Voice Boost + Fun FX</title>
+<title>Colors Video — Voice Boost + Fun FX (No Muting)</title>
 <style>
   :root { --card-max-w: 92vw; --card-max-h: 92svh; }
   body {
@@ -61,7 +61,7 @@
       <input id="volume" type="range" min="0" max="1" step="0.01" value="1" title="Volume"/>
     </div>
 
-    <!-- Fun FX (bold) + FX On/Off -->
+    <!-- Fun FX + FX On/Off (no muting; FX layers on top of original) -->
     <div class="row">
       <button id="fxToggle" class="btn" title="Toggle effects">FX: Off</button>
       <button data-fx="none"      class="btn">None</button>
@@ -104,7 +104,6 @@
   function setSpeed(v){
     const rate = Math.max(0.25, Math.min(2.0, v));
     vid.playbackRate = rate;
-    // highlight active button
     [slowBtn, normBtn, fastBtn].forEach(b => b.classList.remove('active'));
     if (rate < 1.0) slowBtn.classList.add('active');
     else if (rate > 1.0) fastBtn.classList.add('active');
@@ -125,23 +124,24 @@
     if (e.key === 'ArrowRight') fwd5.click();
   });
 
-  // Volume: when FX is OFF, control element volume; when FX is ON, control master gain
+  // Volume slider now controls BOTH the video element and the FX bus
   let master = null;
   function setVolume(v){
     const vv = Math.max(0, Math.min(1, v));
-    if (fxEnabled && master) master.gain.value = vv; else vid.volume = vv;
+    vid.volume = vv;
+    if (master) master.gain.value = vv;
   }
   volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value)));
 
-  // --- WebAudio: Voice Boost (mid/side + speech EQ/comp) + FX ---
+  // --- WebAudio: Voice Boost (mid/side + speech EQ/comp) + FX (layered) ---
   const fxToggle = document.getElementById('fxToggle');
   const fxButtons = document.querySelectorAll('[data-fx]');
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
 
-  let ctx, srcNode, splitter, merger, dryGain, directWet, echoMix, reverbMix, hp, bp, lp, shaper, delay, fb, convolver, trem, lfo, lfoGain;
-  let midLMix, midRMix, sideLMix, sideRMix; // gains for reconstruction
+  let ctx, srcNode, splitter, merger, directWet, echoMix, reverbMix, hp, bp, lp, shaper, delay, fb, convolver, trem, lfo, lfoGain;
+  let midLMix, midRMix, sideLMix, sideRMix;
   let midBus, sideBus, midHP, midPresence, midDeess, midComp, sideHP, sideAtten;
-  let fxEnabled = false; // start with FX OFF so the video doesn't auto-mute
+  let fxEnabled = false; // FX OFF initially (but no muting)
 
   function makeDistortion(amount=0){
     const k = amount, n = 44100, curve = new Float32Array(n), deg = Math.PI/180;
@@ -157,10 +157,9 @@
     // Source
     srcNode  = ctx.createMediaElementSource(vid);
 
-    // ----- Mid/Side voice emphasis -----
+    // ----- Mid/Side voice emphasis (pre-FX) -----
     splitter = ctx.createChannelSplitter(2);
     merger   = ctx.createChannelMerger(2);
-
     srcNode.connect(splitter);
 
     // Mid = (L+R)/2
@@ -178,7 +177,7 @@
 
     midBus.connect(midHP).connect(midPresence).connect(midDeess).connect(midComp);
 
-    // Side = (L-R)/2
+    // Side = (L-R)/2 (attenuate 40%)
     const gLS = ctx.createGain(); gLS.gain.value = 0.5;
     const gRS = ctx.createGain(); gRS.gain.value = -0.5;
     splitter.connect(gLS, 0); splitter.connect(gRS, 1);
@@ -198,23 +197,19 @@
     midComp.connect(midLMix);  midComp.connect(midRMix);
     sideAtten.connect(sideLMix); sideAtten.connect(sideRMix);
 
-    merger.connect = merger.connect.bind(merger); // just to be safe
-    midLMix.connect(merger, 0, 0);
-    sideLMix.connect(merger, 0, 0);
-    midRMix.connect(merger, 0, 1);
-    sideRMix.connect(merger, 0, 1);
+    midLMix.connect(merger, 0, 0);  sideLMix.connect(merger, 0, 0);
+    midRMix.connect(merger, 0, 1);  sideRMix.connect(merger, 0, 1);
 
-    // ----- FX chain (after voice boost) -----
-    const preFX = ctx.createGain(); // entry to FX/dry mixer
+    // ----- FX chain (post voice-boost) -----
+    const preFX = ctx.createGain();
     merger.connect(preFX);
 
-    dryGain  = ctx.createGain();  dryGain.gain.value = 1.0; // clean (voice-boosted)
-    directWet= ctx.createGain();  directWet.gain.value = 0.0;
-    echoMix  = ctx.createGain();  echoMix.gain.value = 0.0;
-    reverbMix= ctx.createGain();  reverbMix.gain.value = 0.0;
-    master   = ctx.createGain();  master.gain.value = parseFloat(volume.value);
+    // Processed buses (no dry duplication — original video provides dry)
+    directWet = ctx.createGain();  directWet.gain.value = 0.0;
+    echoMix   = ctx.createGain();  echoMix.gain.value   = 0.0;
+    reverbMix = ctx.createGain();  reverbMix.gain.value = 0.0;
 
-    // Tremolo (for Alien)
+    // Tremolo (Alien)
     trem = ctx.createGain(); trem.gain.value = 1.0;
     lfo  = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value = 0;
     lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
@@ -241,98 +236,83 @@
       convolver.buffer = ir;
     })();
 
-    // Wire: preFX -> dry & wet
-    preFX.connect(dryGain);                  // clean (already voice-boosted)
+    // Wire processed chain
     preFX.connect(trem).connect(hp).connect(bp).connect(lp).connect(shaper);
-    shaper.connect(directWet);               // processed direct
-    shaper.connect(delay).connect(echoMix);  // echo
-    shaper.connect(convolver);               // reverb
-    convolver.connect(reverbMix);
+    shaper.connect(directWet);
+    shaper.connect(delay).connect(echoMix);
+    shaper.connect(convolver).connect(reverbMix);
 
-    // Mix to master (we'll only hear this when FX is ON)
-    dryGain.connect(master);
+    // Master out for processed path
+    master = ctx.createGain(); master.gain.value = parseFloat(volume.value);
     directWet.connect(master);
     echoMix.connect(master);
     reverbMix.connect(master);
     master.connect(ctx.destination);
-
-    // IMPORTANT: don't mute video here; we only mute when FX turns ON
   }
 
   function resetFX(){
     if (!ctx) return;
-    // Neutral filters
     hp.frequency.value=20; hp.Q.value=0.7;
     bp.frequency.value=1000; bp.Q.value=0.1;
     lp.frequency.value=20000; lp.Q.value=0.7;
-    // No distortion
     shaper.curve = makeDistortion(0);
-    // Mixes off
     directWet.gain.value = 0.0;
     echoMix.gain.value   = 0.0;
     reverbMix.gain.value = 0.0;
-    // Tremolo off
     lfo.frequency.value = 0;
     lfoGain.gain.value  = 0;
     trem.gain.value     = 1.0;
-    // Dry path full if FX enabled (we'll manage mute separately)
-    if (fxEnabled) dryGain.gain.value = 1.0;
   }
 
   function setFX(name){
     if (!ctx) return;
     resetFX();
 
-    // Make effects obvious by default when FX enabled
-    dryGain.gain.value = 0.0; // start wet; presets may reintroduce dry
-
+    // With no muting, we only add the processed sound on top of the original
     switch(name){
       case 'none':
-        dryGain.gain.value = 1.0; // voice-boosted clean
+        // leave all wet gains at 0
         break;
 
       case 'telephone':
-        directWet.gain.value = 1.0;
+        directWet.gain.value = 0.9;
         hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8;
         break;
 
       case 'robot':
-        directWet.gain.value = 1.0;
+        directWet.gain.value = 0.9;
         hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2;
         shaper.curve = makeDistortion(75);
         echoMix.gain.value = 0.08;
         break;
 
       case 'cave':
-        dryGain.gain.value = 0.2;
-        directWet.gain.value = 0.1;
+        directWet.gain.value = 0.2;
         reverbMix.gain.value = 0.45;
         echoMix.gain.value   = 0.10;
         delay.delayTime.value= 0.12;
         break;
 
       case 'echo':
-        dryGain.gain.value = 0.6;
         directWet.gain.value = 0.2;
         echoMix.gain.value   = 0.30;
         delay.delayTime.value= 0.22; fb.gain.value=0.32;
         break;
 
       case 'alien':
-        dryGain.gain.value = 0.2;
         directWet.gain.value = 0.9;
         bp.frequency.value = 900; bp.Q.value = 0.9;
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
 
-      case 'chipmunk': // fun: pitch via speed up
-        directWet.gain.value = 1.0;
+      case 'chipmunk': // playful: speed up (pitch up)
+        directWet.gain.value = 0.9;
         hp.frequency.value = 120; lp.frequency.value = 18000;
         setSpeed(1.25);
         break;
 
-      case 'deep': // fun: pitch via slow
-        directWet.gain.value = 1.0;
+      case 'deep': // playful: slow (pitch down)
+        directWet.gain.value = 0.9;
         lp.frequency.value = 4800;
         setSpeed(0.85);
         break;
@@ -344,45 +324,36 @@
     if (active) active.classList.add('primary');
   }
 
-  function setFxEnabled(on){
-    fxEnabled = on;
-    // Audio routing: when FX ON, listen to WebAudio (master) and mute element.
-    // When FX OFF, unmute element and silence master.
-    if (fxEnabled){
-      vid.muted = true;
-      if (master) master.gain.value = parseFloat(volume.value);
-      fxToggle.textContent = 'FX: On';
-      fxToggle.classList.add('pink');
-      fxToggle.classList.remove('primary');
-    } else {
-      vid.muted = false;
-      if (master) master.gain.value = 0.0;
-      fxToggle.textContent = 'FX: Off';
-      fxToggle.classList.remove('pink');
-      fxToggle.classList.remove('primary');
-    }
+  function updateFxToggleButton(){
+    fxToggle.textContent = fxEnabled ? 'FX: On' : 'FX: Off';
+    fxToggle.classList.toggle('pink', fxEnabled);
+    fxToggle.classList.toggle('primary', !fxEnabled);
   }
 
-  // Toggle FX master on/off
   fxToggle.addEventListener('click', async () => {
     await ensureAudioGraph();
-    setFxEnabled(!fxEnabled);
-    if (fxEnabled){
-      // If no preset picked yet, default to 'none' (voice-boosted clean)
+    fxEnabled = !fxEnabled;
+    updateFxToggleButton();
+    // When OFF: zero out the processed buses (original video remains audible)
+    if (!fxEnabled) { resetFX(); }
+    else {
+      // When ON: re-apply currently highlighted preset, or default to 'none'
       const active = document.querySelector('[data-fx].primary')?.dataset.fx || 'none';
       setFX(active);
     }
   });
+  updateFxToggleButton();
 
-  // Preset buttons
   fxButtons.forEach(b => b.addEventListener('click', async (ev) => {
     await ensureAudioGraph();
-    setFxEnabled(true);
+    fxEnabled = true;
+    updateFxToggleButton();
     setFX(ev.currentTarget.dataset.fx);
   }));
 
-  // Start with FX OFF so playing doesn't mute the video
-  setFxEnabled(false);
+  // Build audio graph on first play or FX use
+  playBtn.addEventListener('click', ensureAudioGraph, { once:true });
+  fxButtons.forEach(b => b.addEventListener('click', ensureAudioGraph, { once:true }));
 
   // Volume init
   setVolume(parseFloat(volume.value));
