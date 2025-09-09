@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Colors Video — Fun FX (No Muting)</title>
+<title>Colors Video — Fun FX (Reset = Normal)</title>
 <style>
   :root { --card-max-w: 92vw; --card-max-h: 92svh; }
   body {
@@ -57,7 +57,7 @@
     </div>
 
     <div class="row">
-      <button data-fx="none"      class="btn fx active">None</button>
+      <button data-fx="reset"     class="btn fx active">Reset</button>
       <button data-fx="chipmunk"  class="btn fx">Chipmunk</button>
       <button data-fx="deep"      class="btn fx">Deep</button>
       <button data-fx="robot"     class="btn fx">Robot</button>
@@ -107,7 +107,6 @@
     [slowBtn, fastBtn].forEach(b => b.classList.remove('active'));
     if (rate < 1.0) slowBtn.classList.add('active');
     else if (rate > 1.0) fastBtn.classList.add('active');
-    // rate === 1.0 -> neither highlighted
   }
   function setSpeed(rate){
     const r = Math.max(0.25, Math.min(2.0, rate));
@@ -123,7 +122,7 @@
     hideStatus();
     setVolume(parseFloat(volume.value) || 1); // ensure audible
     try { await vid.play(); } catch {}
-    ensureAudioGraph(); // prep FX after first play
+    // Do NOT build audio graph here—only when an FX (not Reset) is chosen
   });
   pauseBtn.addEventListener('click', () => vid.pause());
   back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
@@ -249,74 +248,84 @@
     trem.gain.value     = 1.0;
   }
 
-  function setFX(name){
+  async function teardownAudioGraph(){
+    // Cleanly remove the processed layer entirely (prevents any chance of “mute” side effects)
     if (!ctx) return;
+    try { await ctx.close(); } catch {}
+    ctx = null;
+    master = null;
+    // nodes will be GC’d
+  }
+
+  // The “Reset” button returns to normal speed and normal (unprocessed) audio
+  async function resetToNormal(){
+    setSpeed(1.00);
+    await teardownAudioGraph();   // drop FX layer completely
+    // Clear FX button highlights, set Reset active
+    fxButtons.forEach(b => b.classList.toggle('active', b.dataset.fx === 'reset'));
+    // Normal speed means neither speed button stays highlighted
+    [slowBtn, fastBtn].forEach(b => b.classList.remove('active'));
+    // Ensure volume is applied to the video element
+    setVolume(parseFloat(volume.value) || 1);
+  }
+
+  function applyFXPreset(name){
+    if (!ctx) return; // safety
     resetFX();
-
     switch(name){
-      case 'none':
-        // Return to NORMAL speed and no FX
-        setSpeed(1.00);
-        break;
-
       case 'telephone':
         directWet.gain.value = 0.9;
         hp.frequency.value = 350; lp.frequency.value = 3300; bp.frequency.value = 1200; bp.Q.value = 0.8;
         break;
-
       case 'robot':
         directWet.gain.value = 0.9;
         hp.frequency.value = 180; lp.frequency.value = 3800; bp.frequency.value = 1200; bp.Q.value = 1.2;
         shaper.curve = makeDistortion(75);
         echoMix.gain.value = 0.08;
         break;
-
       case 'cave':
         directWet.gain.value = 0.2;
         reverbMix.gain.value = 0.45;
         echoMix.gain.value   = 0.10;
         delay.delayTime.value= 0.12;
         break;
-
       case 'echo':
         directWet.gain.value = 0.2;
         echoMix.gain.value   = 0.30;
         delay.delayTime.value= 0.22; fb.gain.value=0.32;
         break;
-
       case 'alien':
         directWet.gain.value = 0.9;
         bp.frequency.value = 900; bp.Q.value = 0.9;
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
-
-      case 'chipmunk': // playful: pitch up via faster speed
+      case 'chipmunk': // pitch up via faster speed
         directWet.gain.value = 0.9;
         hp.frequency.value = 120; lp.frequency.value = 18000;
         setSpeed(1.25);
         break;
-
-      case 'deep': // playful: pitch down via slower speed
+      case 'deep': // pitch down via slower speed
         directWet.gain.value = 0.9;
         lp.frequency.value = 4800;
         setSpeed(0.85);
         break;
     }
-
-    // highlight active FX button
-    fxButtons.forEach(b => b.classList.toggle('active', b.dataset.fx === name));
   }
 
-  // Wire FX buttons
+  // Wire FX buttons (Reset vs Effects)
   fxButtons.forEach(btn => {
     btn.addEventListener('click', async (ev) => {
+      const fx = ev.currentTarget.dataset.fx;
+      if (fx === 'reset') {
+        await resetToNormal();
+        return;
+      }
+      // For any FX: (re)build graph and apply preset
       await ensureAudioGraph();
-      setFX(ev.currentTarget.dataset.fx);
+      applyFXPreset(fx);
+      fxButtons.forEach(b => b.classList.toggle('active', b === ev.currentTarget));
     });
   });
-
-  // Build audio graph on first play (mobile-friendly)
-  playBtn.addEventListener('click', ensureAudioGraph, { once:true });
 })();
 </script>
 </body>
