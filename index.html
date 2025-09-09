@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Colors Video — Fun FX (Normal = Clean)</title>
+<title>Colors Video — Fun FX (Normal = Clean, Never Mutes)</title>
 <style>
   :root { --card-max-w: 92vw; --card-max-h: 92svh; }
   body {
@@ -92,12 +92,14 @@
       Make sure it’s in the same folder and the name matches <b>exactly</b> (case-sensitive).`);
   });
 
-  // Volume: original + FX layer (when created)
-  let master = null;
+  // Volume: original + FX/dry context paths (when created)
+  let master = null;   // processed layer volume
+  let dryGain = null;  // clean passthrough inside AudioContext
   function setVolume(v){
     const vv = Math.max(0, Math.min(1, v));
-    vid.volume = vv;
-    if (master) master.gain.value = vv;
+    vid.volume = vv;                 // element audio (for browsers that still output natively)
+    if (master) master.gain.value = vv; // processed layer
+    if (dryGain) dryGain.gain.value = vv; // clean passthrough
   }
   volume.addEventListener('input', (e)=> setVolume(parseFloat(e.target.value) || 0));
   setVolume(parseFloat(volume.value) || 1);
@@ -122,7 +124,6 @@
     hideStatus();
     setVolume(parseFloat(volume.value) || 1); // ensure audible
     try { await vid.play(); } catch {}
-    // Do not build audio graph here; only when an FX preset is chosen
   });
   pauseBtn.addEventListener('click', () => vid.pause());
   back5.addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 5); });
@@ -133,7 +134,7 @@
     if (e.key === 'ArrowRight') fwd5.click();
   });
 
-  // ===== WebAudio FX layer (adds on top; never mutes original) =====
+  // ===== WebAudio FX layer + clean passthrough (never mutes original) =====
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, srcNode, splitter, merger, directWet, echoMix, reverbMix, hp, bp, lp, shaper, delay, fb, convolver, trem, lfo, lfoGain;
   let midLMix, midRMix, sideLMix, sideRMix;
@@ -151,13 +152,20 @@
       ctx = new AudioCtx();
       await ctx.resume().catch(()=>{});
 
-      // Source -> split L/R
+      // Source
       srcNode  = ctx.createMediaElementSource(vid);
+
+      // --- Always-on CLEAN PASSTHROUGH inside the context ---
+      dryGain = ctx.createGain();
+      dryGain.gain.value = parseFloat(volume.value) || 1;
+      srcNode.connect(dryGain).connect(ctx.destination);
+
+      // --- Processed (voice-boost + FX) path ---
       splitter = ctx.createChannelSplitter(2);
       merger   = ctx.createChannelMerger(2);
       srcNode.connect(splitter);
 
-      // Mid = (L+R)/2 with simple speech chain
+      // Mid = (L+R)/2 with mild speech chain
       const gLM = ctx.createGain(); gLM.gain.value = 0.5;
       const gRM = ctx.createGain(); gRM.gain.value = 0.5;
       splitter.connect(gLM, 0); splitter.connect(gRM, 1);
@@ -180,7 +188,7 @@
       gLS.connect(sideBus); gRS.connect(sideBus);
       sideBus.connect(sideHP).connect(sideAtten);
 
-      // Reconstruct stereo (for processed layer)
+      // Reconstruct stereo for processed layer
       midLMix  = ctx.createGain(); midLMix.gain.value = 1.0;
       midRMix  = ctx.createGain(); midRMix.gain.value = 1.0;
       sideLMix = ctx.createGain(); sideLMix.gain.value = 1.0;
@@ -226,6 +234,7 @@
       shaper.connect(delay).connect(echoMix);
       shaper.connect(convolver).connect(reverbMix);
 
+      // Master for processed layer (adds on top)
       master = ctx.createGain(); master.gain.value = parseFloat(volume.value) || 1;
       directWet.connect(master);
       echoMix.connect(master);
@@ -234,37 +243,28 @@
     } catch(e){ console.error(e); showStatus('Audio setup error. Reload the page.'); }
   }
 
-  function resetFX(){
+  function silenceProcessedLayer(){
     if (!ctx) return;
-    // Silence the processed layer ONLY (keep context alive to avoid any “unavailable” errors)
     directWet.gain.value = 0.0;
     echoMix.gain.value   = 0.0;
     reverbMix.gain.value = 0.0;
-    if (typeof hp?.frequency?.value === 'number') {
-      hp.frequency.value=20; hp.Q.value=0.7;
-      bp.frequency.value=1000; bp.Q.value=0.1;
-      lp.frequency.value=20000; lp.Q.value=0.7;
-    }
     if (lfo && lfoGain && trem){
       lfo.frequency.value = 0;
       lfoGain.gain.value  = 0;
       trem.gain.value     = 1.0;
     }
+    if (hp && bp && lp){
+      hp.frequency.value=20; hp.Q.value=0.7;
+      bp.frequency.value=1000; bp.Q.value=0.1;
+      lp.frequency.value=20000; lp.Q.value=0.7;
+    }
     if (shaper) shaper.curve = makeDistortion(0);
-  }
-
-  function setSpeed(rate){
-    const r = Math.max(0.25, Math.min(2.0, rate));
-    vid.playbackRate = r;
-    [slowBtn, fastBtn].forEach(b => b.classList.remove('active'));
-    if (r < 1.0) slowBtn.classList.add('active');
-    else if (r > 1.0) fastBtn.classList.add('active');
   }
 
   // FX Presets
   function applyFXPreset(name){
     if (!ctx) return; // safety
-    resetFX(); // start from clean processed layer
+    silenceProcessedLayer(); // start clean each time
     switch(name){
       case 'telephone':
         directWet.gain.value = 0.9;
@@ -292,12 +292,12 @@
         bp.frequency.value = 900; bp.Q.value = 0.9;
         lfo.frequency.value = 35; lfoGain.gain.value = 0.5;
         break;
-      case 'chipmunk': // pitch up via faster speed
+      case 'chipmunk':
         directWet.gain.value = 0.9;
         hp.frequency.value = 120; lp.frequency.value = 18000;
         setSpeed(1.25);
         break;
-      case 'deep': // pitch down via slower speed
+      case 'deep':
         directWet.gain.value = 0.9;
         lp.frequency.value = 4800;
         setSpeed(0.85);
@@ -305,14 +305,13 @@
     }
   }
 
-  // “Normal” button = clean audio + 1.00×, never tears down context and never mutes
+  // “Normal” = clean audio + 1.00×, never tears down context, never mutes
   async function goNormal(){
     setSpeed(1.00);
-    // If FX graph exists, silence it; if not, no-op
-    resetFX();
-    // Clear FX button highlights, set Normal active
+    silenceProcessedLayer();           // make processed path silent
+    if (dryGain) dryGain.gain.value = parseFloat(volume.value) || 1; // ensure clean passthrough level
     fxButtons.forEach(b => b.classList.toggle('active', b.dataset.fx === 'normal'));
-    // Make sure it’s actually playing
+    // keep playing
     setVolume(parseFloat(volume.value) || 1);
     if (vid.paused) { try { await vid.play(); } catch {} }
   }
